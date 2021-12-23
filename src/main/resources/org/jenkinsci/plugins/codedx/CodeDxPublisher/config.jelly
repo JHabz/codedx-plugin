@@ -74,6 +74,10 @@
      </table>
    </f:block>
 
+    <f:entry title="Analysis Branch" field="analysisBranch" help="/plugin/codedx/help-analysisBranch.html">
+    	<f:textbox default="DEFAULT" />
+	</f:entry>
+
     <f:section title="Advanced Options">
 	  <f:advanced>
 	    <f:entry title="Excluded Source and Binary Files" field="excludedSourceAndBinaryFiles" help="/plugin/codedx/help-excludedSourceAndBinaryFiles.html">
