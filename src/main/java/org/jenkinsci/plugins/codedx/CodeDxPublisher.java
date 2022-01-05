@@ -269,7 +269,7 @@ public class CodeDxPublisher extends Recorder implements SimpleBuildStep {
 				StartAnalysisResponse response;
 
 				try {
-					response = repeatingClient.startAnalysis(Integer.parseInt(projectId), toSend);
+					response = repeatingClient.startAnalysis(Integer.parseInt(projectId), analysisBranch, toSend);
 				} catch (CodeDxClientException e) {
 					String errorSpecificMessage;
 

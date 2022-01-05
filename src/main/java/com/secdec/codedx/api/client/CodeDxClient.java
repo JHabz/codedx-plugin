@@ -116,6 +116,30 @@ public class CodeDxClient {
 		return serverUrl + "projects/" + projectId;
 	}
 
+	public String createAnalysisPrep(int projectId) throws CodeDxClientException, IOException {
+		JsonObject reqBody = new JsonObject();
+		reqBody.addProperty("projectId", projectId);
+		AnalysisPrep prep = doHttpRequest(
+				new HttpPost(),
+				"analysis-prep",
+				false,
+				new TypeToken<AnalysisPrep>(){}.getType(),
+				reqBody
+		);
+		return prep.getPrepId();
+	}
+	public static class AnalysisPrep {
+		private String prepId;
+
+		public void setPrepId(String id) {
+			prepId = id;
+		}
+
+		public String getPrepId() {
+			return prepId;
+		}
+	}
+
 	/**
 	 * Retrieves a list of projects from CodeDx.
 	 *
@@ -367,34 +391,43 @@ public class CodeDxClient {
 	 * @throws CodeDxClientException
 	 *
 	 */
-	public StartAnalysisResponse startAnalysis(int projectId, Map<String, InputStream> artifacts) throws IOException, CodeDxClientException {
-		String path = "projects/" + projectId + "/analysis";
+	public StartAnalysisResponse startAnalysis(int projectId, String analysisBranch, Map<String, InputStream> artifacts) throws IOException, CodeDxClientException {
+		String prepId = createAnalysisPrep(projectId);
+
+		JsonObject branchBody = new JsonObject();
+		branchBody.addProperty("branch", analysisBranch);
+
+		// As of writing this it is not clear what the response is
+		doHttpRequest(new HttpPut(), "analysis-prep/" + prepId + "/branch", true, null, branchBody);
+
+		String path = "analysis-prep/" + prepId + "/upload";
 		HttpPost postRequest = new HttpPost(url + path);
 		postRequest.addHeader(KEY_HEADER, key);
 
-		MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-
-		builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
+		MultipartEntityBuilder builder;
 
 		for(Map.Entry<String, InputStream> artifact : artifacts.entrySet()){
-			builder.addPart("file[]", new InputStreamBody(artifact.getValue(), artifact.getKey()));
+			builder = MultipartEntityBuilder.create();
+			builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
+
+			builder.addPart("file", new InputStreamBody(artifact.getValue(), artifact.getKey()));
+
+			HttpEntity entity = builder.build();
+			postRequest.setEntity(entity);
+			HttpResponse response = httpClientBuilder.build().execute(postRequest);
+			int responseCode = response.getStatusLine().getStatusCode();
+
+			if(responseCode != 202){
+				throw new CodeDxClientException("POST", path, response.getStatusLine().getReasonPhrase(), responseCode, IOUtils.toString(response.getEntity().getContent()));
+			}
 		}
 
-		HttpEntity entity = builder.build();
 
-		postRequest.setEntity(entity);
 
-		HttpResponse response = httpClientBuilder.build().execute(postRequest);
-
-		int responseCode = response.getStatusLine().getStatusCode();
-
-		if(responseCode != 202){
-			throw new CodeDxClientException("POST", path, response.getStatusLine().getReasonPhrase(), responseCode, IOUtils.toString(response.getEntity().getContent()));
-		}
-
-		String data = IOUtils.toString(response.getEntity().getContent());
-
-		return gson.<StartAnalysisResponse>fromJson(data,new TypeToken<StartAnalysisResponse>(){}.getType());
+		return doHttpRequest(new HttpPost(),
+				"analysis-prep/" + prepId + "/analyze",
+				false, new TypeToken<StartAnalysisResponse>(){}.getType(),
+				null);
 	}
 }
 
