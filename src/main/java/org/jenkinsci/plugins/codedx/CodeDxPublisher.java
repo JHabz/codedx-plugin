@@ -77,6 +77,7 @@ public class CodeDxPublisher extends Recorder implements SimpleBuildStep {
 	private String excludedSourceAndBinaryFiles;
 
 	private String analysisName;
+	private String analysisBranch;
 
 	// Contains the fields applicable when the user chooses to have Jenkins wait for
 	// analysis runs to complete.
@@ -98,12 +99,14 @@ public class CodeDxPublisher extends Recorder implements SimpleBuildStep {
 			final String url,
 			final String key,
 			final String projectId,
-			final String analysisName
+			final String analysisName,
+			final String analysisBranch
 	) {
 		this.projectId = projectId;
 		this.url = url;
 		this.key = key;
 		this.analysisName = analysisName.trim();
+		this.analysisBranch = analysisBranch.trim();
 
 		this.sourceAndBinaryFiles = "";
 		this.excludedSourceAndBinaryFiles = "";
@@ -181,6 +184,8 @@ public class CodeDxPublisher extends Recorder implements SimpleBuildStep {
 	}
 
 	public String getAnalysisName(){ return analysisName; }
+
+	public String getAnalysisBranch() { return analysisBranch; }
 
 	private String getLatestAnalysisUrl() {
 		if (projectId.length() != 0 && !projectId.equals("-1")) {
