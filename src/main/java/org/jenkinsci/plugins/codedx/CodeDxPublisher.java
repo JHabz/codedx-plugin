@@ -266,10 +266,21 @@ public class CodeDxPublisher extends Recorder implements SimpleBuildStep {
 
 				int projectIdInt = Integer.parseInt(projectId);
 
+				String expandedBranchName;
+
+				try {
+					expandedBranchName = TokenMacro.expand(build, workspace, listener, analysisBranch);
+				} catch (MacroEvaluationException e) {
+					buildOutput.println("Failed to expand Analysis Branch expression using TokenMacro. " +
+							"Falling back to built-in Jenkins functionality");
+					e.printStackTrace(buildOutput);
+					expandedBranchName = build.getEnvironment(listener).expand(analysisBranch);
+				}
+
 				StartAnalysisResponse response;
 
 				try {
-					response = repeatingClient.startAnalysis(Integer.parseInt(projectId), analysisBranch, toSend);
+					response = repeatingClient.startAnalysis(Integer.parseInt(projectId), expandedBranchName, toSend);
 				} catch (CodeDxClientException e) {
 					String errorSpecificMessage;
 
