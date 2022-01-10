@@ -394,12 +394,13 @@ public class CodeDxClient {
 	public StartAnalysisResponse startAnalysis(int projectId, String analysisBranch, Map<String, InputStream> artifacts) throws IOException, CodeDxClientException {
 		String prepId = createAnalysisPrep(projectId);
 
-		JsonObject branchBody = new JsonObject();
-		branchBody.addProperty("branch", analysisBranch);
+		// If Code Dx supports branching
+		if (analysisBranch.length() > 0) {
+			JsonObject branchBody = new JsonObject();
+			branchBody.addProperty("branch", analysisBranch);
 
-		// As of writing this it is not clear what the response is
-		doHttpRequest(new HttpPut(), "analysis-prep/" + prepId + "/branch", true, null, branchBody);
-
+			doHttpRequest(new HttpPut(), "analysis-prep/" + prepId + "/branch", true, null, branchBody);
+		}
 		String path = "analysis-prep/" + prepId + "/upload";
 		HttpPost postRequest = new HttpPost(url + path);
 		postRequest.addHeader(KEY_HEADER, key);
@@ -421,8 +422,6 @@ public class CodeDxClient {
 				throw new CodeDxClientException("POST", path, response.getStatusLine().getReasonPhrase(), responseCode, IOUtils.toString(response.getEntity().getContent()));
 			}
 		}
-
-
 
 		return doHttpRequest(new HttpPost(),
 				"analysis-prep/" + prepId + "/analyze",

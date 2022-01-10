@@ -266,15 +266,26 @@ public class CodeDxPublisher extends Recorder implements SimpleBuildStep {
 
 				int projectIdInt = Integer.parseInt(projectId);
 
-				String expandedBranchName;
+				String expandedBranchName = "";
 
-				try {
-					expandedBranchName = TokenMacro.expand(build, workspace, listener, analysisBranch);
-				} catch (MacroEvaluationException e) {
-					buildOutput.println("Failed to expand Analysis Branch expression using TokenMacro. " +
-							"Falling back to built-in Jenkins functionality");
-					e.printStackTrace(buildOutput);
-					expandedBranchName = build.getEnvironment(listener).expand(analysisBranch);
+				if(cdxVersion.compareTo(CodeDxVersion.MIN_FOR_BRANCHING) < 0){
+					buildOutput.println("The connected Code Dx server is only version " + cdxVersion +
+							", which doesn't support branching (minimum supported version is " +
+							CodeDxVersion.MIN_FOR_BRANCHING + "). The analysis branch will not be set or sent.");
+				} else {
+					try {
+						if (analysisName.length() == 0) {
+							analysisName = "DEFAULT";
+						}
+						buildOutput.println("Analysis Branch (raw): " + analysisBranch);
+						expandedBranchName = TokenMacro.expand(build, workspace, listener, analysisBranch);
+						buildOutput.println("Analysis Branch expanded to: " + expandedBranchName);
+					} catch (MacroEvaluationException e) {
+						buildOutput.println("Failed to expand Analysis Branch expression using TokenMacro. " +
+								"Falling back to built-in Jenkins functionality");
+						e.printStackTrace(buildOutput);
+						expandedBranchName = build.getEnvironment(listener).expand(analysisBranch);
+					}
 				}
 
 				StartAnalysisResponse response;
