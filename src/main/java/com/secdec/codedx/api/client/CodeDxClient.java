@@ -179,6 +179,15 @@ public class CodeDxClient {
 		);
 	}
 
+	public List<Branch> getBranches(int projectId) throws CodeDxClientException, IOException {
+		return doHttpRequest(
+				new HttpGet(),
+				"projects/" + projectId + "/branches",
+				true,
+				new TypeToken<List<Branch>>(){}.getType(),
+				null
+		);
+	}
 
 	/**
 	 * Retrieves all Triage statuses for a given project.
@@ -391,14 +400,20 @@ public class CodeDxClient {
 	 * @throws CodeDxClientException
 	 *
 	 */
-	public StartAnalysisResponse startAnalysis(int projectId, String analysisBranch, Map<String, InputStream> artifacts) throws IOException, CodeDxClientException {
+	public StartAnalysisResponse startAnalysis(int projectId, String analysisBranch, String analysisBranchParent, Map<String, InputStream> artifacts) throws IOException, CodeDxClientException {
 		String prepId = createAnalysisPrep(projectId);
 
 		// If Code Dx supports branching
 		if (analysisBranch.length() > 0) {
 			JsonObject branchBody = new JsonObject();
-			branchBody.addProperty("branch", analysisBranch);
-
+			if (analysisBranchParent.length() > 0) {
+				JsonObject branchParent = new JsonObject();
+				branchParent.addProperty("parent", analysisBranchParent);
+				branchParent.addProperty("name", analysisBranch);
+				branchBody.add("branch", branchParent);
+			} else {
+				branchBody.addProperty("branch", analysisBranch);
+			}
 			doHttpRequest(new HttpPut(), "analysis-prep/" + prepId + "/branch", true, null, branchBody);
 		}
 		String path = "analysis-prep/" + prepId + "/upload";

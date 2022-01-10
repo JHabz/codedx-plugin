@@ -77,6 +77,12 @@
     <f:entry title="Analysis Branch" field="analysisBranch" help="/plugin/codedx/help-analysisBranch.html">
     	<f:textbox default="DEFAULT" />
 	</f:entry>
+	<f:advanced>
+        <f:entry title="New Analysis Branch Parent" field="analysisBranchParent" help="/plugin/codedx/help-analysisBranchParent.html">
+    		<f:textbox/>
+    	</f:entry>
+
+    </f:advanced>
 
     <f:section title="Advanced Options">
 	  <f:advanced>
