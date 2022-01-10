@@ -440,7 +440,8 @@ public class CodeDxClient {
 
 		return doHttpRequest(new HttpPost(),
 				"analysis-prep/" + prepId + "/analyze",
-				false, new TypeToken<StartAnalysisResponse>(){}.getType(),
+				false,
+				new TypeToken<StartAnalysisResponse>(){}.getType(),
 				null);
 	}
 }

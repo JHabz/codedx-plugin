@@ -277,8 +277,6 @@ public class CodeDxPublisher extends Recorder implements SimpleBuildStep {
 					buildOutput.println("The connected Code Dx server is only version " + cdxVersion +
 							", which doesn't support branching (minimum supported version is " +
 							CodeDxVersion.MIN_FOR_BRANCHING + "). The analysis branch will not be set or sent.");
-					expandedBranchName = "";
-					expandedBranchParent = "";
 				} else {
 					if (analysisBranch.length() == 0) {
 						analysisBranch = "DEFAULT";
