@@ -1,0 +1,13 @@
+<div>
+    <p>
+        This field is required only if the input Analysis Branch is a new branch. This field specifies which parent branch the new branch should be created from.
+    </p>
+    <p>
+        You can use build/environment variables to construct the parent for each analysis. In order to specify a new branch with parent <code>fix-parameters</code>:
+        <code>${GIT_BRANCH}</code>
+        would start an analysis for Code Dx branch with parent <code>fix-parameters</code>.
+    </p>
+    <p>
+        If the entered child branch already exists, then this field will be ignored but will log a warning.
+    </p>
+</div>

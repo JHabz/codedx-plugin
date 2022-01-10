@@ -50,7 +50,6 @@ import javax.servlet.ServletException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.io.Serializable;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
@@ -77,6 +76,8 @@ public class CodeDxPublisher extends Recorder implements SimpleBuildStep {
 	private String excludedSourceAndBinaryFiles;
 
 	private String analysisName;
+	private String analysisBranch;
+	private String analysisBranchParent;
 
 	// Contains the fields applicable when the user chooses to have Jenkins wait for
 	// analysis runs to complete.
@@ -98,12 +99,16 @@ public class CodeDxPublisher extends Recorder implements SimpleBuildStep {
 			final String url,
 			final String key,
 			final String projectId,
-			final String analysisName
+			final String analysisName,
+			final String analysisBranch,
+			final String analysisBranchParent
 	) {
 		this.projectId = projectId;
 		this.url = url;
 		this.key = key;
 		this.analysisName = analysisName.trim();
+		this.analysisBranch = analysisBranch.trim();
+		this.analysisBranchParent = analysisBranchParent.trim();
 
 		this.sourceAndBinaryFiles = "";
 		this.excludedSourceAndBinaryFiles = "";
@@ -181,6 +186,10 @@ public class CodeDxPublisher extends Recorder implements SimpleBuildStep {
 	}
 
 	public String getAnalysisName(){ return analysisName; }
+
+	public String getAnalysisBranch() { return analysisBranch; }
+
+	public String getAnalysisBranchParent() { return analysisBranchParent; }
 
 	private String getLatestAnalysisUrl() {
 		if (projectId.length() != 0 && !projectId.equals("-1")) {
@@ -261,10 +270,87 @@ public class CodeDxPublisher extends Recorder implements SimpleBuildStep {
 
 				int projectIdInt = Integer.parseInt(projectId);
 
+				String expandedBranchName = "";
+				String expandedBranchParent = "";
+
+				if (cdxVersion.compareTo(CodeDxVersion.MIN_FOR_BRANCHING) < 0) {
+					buildOutput.println("The connected Code Dx server is only version " + cdxVersion +
+							", which doesn't support branching (minimum supported version is " +
+							CodeDxVersion.MIN_FOR_BRANCHING + "). The analysis branch will not be set or sent.");
+				} else {
+					if (analysisBranch.length() == 0) {
+						analysisBranch = "DEFAULT";
+					}
+
+					try {
+						buildOutput.println("Analysis Branch (raw): " + analysisBranch);
+						expandedBranchName = TokenMacro.expand(build, workspace, listener, analysisBranch);
+						buildOutput.println("Analysis Branch expression expanded to: " + expandedBranchName);
+					} catch (MacroEvaluationException e) {
+						buildOutput.println("Failed to expand Analysis Branch expression using TokenMacro. " +
+								"Falling back to built-in Jenkins functionality");
+						e.printStackTrace(buildOutput);
+						expandedBranchName = build.getEnvironment(listener).expand(analysisBranch);
+					}
+					List<Branch> existingBranches = null;
+					try {
+						existingBranches = repeatingClient.getBranches(projectIdInt);
+					} catch (CodeDxClientException e) {
+						throw new IOException("Failed to get existing Code Dx branches; aborting build.", e);
+					}
+
+					boolean needParent = true;
+
+					for (Branch branch : existingBranches) {
+						if (branch.getName().equals(expandedBranchName)) {
+							needParent = false;
+							buildOutput.println("Branch successfully found on Code Dx server");
+							break;
+						}
+					}
+					if (needParent) {
+						if (analysisBranchParent.length() > 0) {
+							try {
+								buildOutput.println("Analysis Branch Parent (raw): " + analysisBranchParent);
+								expandedBranchParent = TokenMacro.expand(build, workspace, listener, analysisBranchParent);
+								buildOutput.println("Analysis Branch Parent expression expanded to: " + expandedBranchParent);
+							} catch (MacroEvaluationException e) {
+								buildOutput.println("Failed to expand Analysis Branch Parent expression using TokenMacro. " +
+										"Falling back to built-in Jenkins functionality");
+								e.printStackTrace(buildOutput);
+								expandedBranchParent = build.getEnvironment(listener).expand(analysisBranchParent);
+							}
+							// The parent branch MUST exist on the Code Dx server
+							boolean parentFound = false;
+							for (Branch branch : existingBranches) {
+								if (branch.getName().equals(expandedBranchParent)) {
+									buildOutput.println("Parent branch successfully found on Code Dx server");
+									parentFound = true;
+									break;
+								}
+							}
+							if (!parentFound) {
+								throw new IOException("The parent branch specified could not be found on the Code Dx server." +
+										" Since the branch nor the parent branch could be found, Code Dx can not run");
+							}
+						} else {
+							throw new IOException("The branch you entered does not exist on the Code Dx server." +
+									" If this is intentional, then the parent branch must be specified");
+						}
+					} else {
+						if (analysisBranchParent.length() > 0) {
+							buildOutput.println("WARNING: The input branch already exists (" + expandedBranchName +
+									"). The parent does not need to be specified when using existing branches. Parent will be ignored");
+							// We do not want startAnalysis to use this so set it to empty string
+							expandedBranchParent = "";
+						}
+					}
+				}
+
 				StartAnalysisResponse response;
 
 				try {
-					response = repeatingClient.startAnalysis(Integer.parseInt(projectId), toSend);
+					response = repeatingClient.startAnalysis(Integer.parseInt(projectId), expandedBranchName, expandedBranchParent, toSend);
 				} catch (CodeDxClientException e) {
 					String errorSpecificMessage;
 
